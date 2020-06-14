@@ -38,7 +38,7 @@ public:
     //解析客户请求时主状态机所在的状态
     enum CHECK_STATE
     {
-        CHECK_STATE_REQUESTLINE=0,CHECK_STATE_HEADER,CHECK_STATE_CONNECT
+        CHECK_STATE_REQUESTLINE=0,CHECK_STATE_HEADER,CHECK_STATE_CONTENT
     };
     //服务器处理HTTP请求的可能结果
     enum HTTP_CODE
@@ -69,6 +69,25 @@ private:
     HTTP_CODE process_read();
     //填充HTTP应答
     bool process_write(HTTP_CODE ret);
+
+    //下面这组函数被process_read调用以分析HTTP请求
+    HTTP_CODE  parse_request_line(char * test);
+    HTTP_CODE  parse_headers(char * test);
+    HTTP_CODE  parse_content(char * test);
+    HTTP_CODE  do_request();
+    char * get_line()  { return m_read_buf+m_start_line; }
+    LINE_STATUS parse_line();
+
+    //下面这一组函数被prrocess_write调用以填充HTTP应答
+    void unmap();
+    bool add_response(const char * format,...);
+    bool add_content(const char *& content);
+    bool add_status_line(int status,const char * title);
+    bool add_headers(int content_length);
+    bool add_content_length(int content_length);
+    bool add_linger();
+    bool add_blank_line();
+
 public:
     //所有的socket上的事件都被注册到同一个epoll内核事件表中,所以将epoll文件描述符设置为静态
     static int m_epollfd;

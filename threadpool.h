@@ -1,11 +1,11 @@
 #ifndef THREADPOOL_H
 #define THREADPOOL_H
 
-#include<list>
-#include<cstdio>
-#include<exception>
-#include<pthread.h>
-#include"locker.h"
+#include <list>
+#include <cstdio>
+#include <exception>
+#include <pthread.h>
+#include "locker.h"
 
 template<typename T>
 class threadpool
@@ -16,7 +16,7 @@ public:
     ~threadpool();
     //往請求隊列中添加任務
     bool append(T * pRequest);
-    //工作線程運行的函數,它不斷衝工作隊列中去除任務並執行之
+    //工作线程运行的函数,它不断从请求队列中取出请求并运行
     static void * worker(void * arg);
     void run();  
 private:
@@ -42,11 +42,11 @@ threadpool<T>::threadpool(int iThread_number,int iMax_requests)
         throw std::exception();
     }
 
-    //創建thread_number個線程,並講它們都設置爲脫離線程
+    //创建thread_number个线程,并将它们都设置为脱离线程
     for(int i=0;i<m_thread_numer;++i)
     {
         printf("create tthe %d th thread\n",i);
-        //該參數的第三個參數必須指向一個靜態函數
+        //该参数的第三个参数必须指向一个静态对象
         if(pthread_create(m_pThreads+i,NULL,worker,this)!=0)
         {
             delete [] m_pThreads;
@@ -70,7 +70,7 @@ threadpool<T>::~threadpool()
 template<typename T>
 bool threadpool<T>::append(T * pRequest)
 {
-    //操作工作隊列是一定要加鎖,因爲它被所有的線程共享
+    //操作工作队列是一定要加锁,因为它被所有的线程共享
     m_queuelocker.lock();
     if(m_workqueue.size()>m_max_requests)
     {
@@ -87,7 +87,7 @@ bool threadpool<T>::append(T * pRequest)
 template<typename T>
 void * threadpool<T>::worker(void * arg)
 {
-    //在靜態函數中使用動態的方法
+    //在静态函數中使用动态的方法
     threadpool * poolCur=(threadpool *) arg;
     poolCur->run();
     return poolCur;

@@ -5,11 +5,11 @@
 #include<pthread.h>
 #include<semaphore.h>
 
-//封裝信號的類
+//封装信号的类
 class sem
 {
 public:
-    //創建並出事話信號量
+    //创建并初始化信号量
     sem()
     {
         if(sem_init(&m_sem,0,0)!=0)
@@ -70,7 +70,7 @@ locker::~locker()
     pthread_mutex_destroy(&m_mutex);
 }
 
-//封裝條件變量的類
+//封装条件变量的类
 class cond
 {
 private:
@@ -85,7 +85,7 @@ public:
         }
         if (pthread_cond_init(&m_cond,NULL)!=0)
         {
-            //構造函數出現問題就應該立即釋放已經分配成功的資源
+            //构造函数出现问题就应该立即释放已经分配的资源
             pthread_mutex_unlock(&m_mutex);
             throw std::exception();
         }
@@ -95,7 +95,7 @@ public:
         pthread_mutex_destroy(&m_mutex);
         pthread_cond_destroy(&m_cond);
     }
-    //等待條件變量
+    //等待条件变量
     bool wait()
     {
         int ret=0;
@@ -104,7 +104,7 @@ public:
         pthread_mutex_unlock(&m_mutex);
         return ret==0;
     }
-    //喚醒等待條件變量的線程
+    //唤醒等待条件变量的线程
     bool signal()
     {
         return pthread_cond_signal(&m_cond)==0;
