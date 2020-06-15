@@ -20,6 +20,7 @@
 #include <errno.h>
 #include "locker.h"
 #include "Common.h"
+#include <sys/uio.h>
 
 class http_conn
 {
@@ -43,7 +44,7 @@ public:
     //服务器处理HTTP请求的可能结果
     enum HTTP_CODE
     {
-        NO_REQUEST=0,GET_REQUEST,BAD_REQUEST,NO_REQUEST,FORBIDDEN_REQUEST,FILE_REQUEST,INITERNAL_ERROR,CLOSED_CONNECTION,
+        NO_REQUEST=0,GET_REQUEST,BAD_REQUEST,NO_RESOURCE,FORBIDDEN_REQUEST,FILE_REQUEST,INTERNAL_ERROR,CLOSED_CONNECTION,
     };
     //行的读取状态
     enum LINE_STATUS {LINE_OK=0,LINE_BAD,LINE_OPEN};
@@ -135,7 +136,7 @@ private:
     struct stat m_file_stat;
     //我们将采用writev来执行写操作,所以定义下面两个成员,其中m_iv_count表示被写内存块的数量
     struct iovec m_iv[2];
-    int miv_count;
+    int m_iv_count;
 };
 
 #endif
