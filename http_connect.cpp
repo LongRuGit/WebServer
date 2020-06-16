@@ -262,7 +262,7 @@ http_conn::HTTP_CODE http_conn::parse_content(char * text)
     return NO_REQUEST;
 }
 
-//主状态机
+/* //主状态机
 http_conn::HTTP_CODE http_conn::process_read()
 {
     LINE_STATUS line_status=LINE_OK;
@@ -270,7 +270,7 @@ http_conn::HTTP_CODE http_conn::process_read()
     char * text=NULL;
 
     return NO_REQUEST;
-}
+} */
 
 //主状态机
 http_conn::HTTP_CODE http_conn::process_read()
@@ -413,3 +413,151 @@ bool http_conn::write()
     }
 }
 
+//往写缓冲中写入待发送的数据
+bool http_conn::add_response(const char * format,...)
+{
+    if(m_write_idx>=WRITE_BUFFER_SIZE)
+    {
+        return false;
+    }
+    va_list arg_list;
+    va_start(arg_list,format);
+    //将可变参数格式化输出到一个字符数组
+    int len=vsnprintf(m_write_buf+m_write_idx,WRITE_BUFFER_SIZE-1-m_write_idx,format,arg_list);
+    if(len>=(WRITE_BUFFER_SIZE-1-m_write_idx))
+    {
+        return false;
+    }
+    m_write_idx+=len;
+    va_end(arg_list);
+    return true;
+}
+
+bool http_conn::add_status_line(int status,const char * title)
+{
+    return add_response("%s %d %s\r\n","HTTP/1.1",status,title);
+}
+
+bool http_conn::add_headers(int content_len)
+{
+    add_content_length(content_len);
+    add_linger();
+    add_blank_line();
+}
+
+bool http_conn::add_content_length(int content_len)
+{
+    return add_response("Content-Length: %d\r\n",content_len);
+}
+
+bool http_conn::add_linger()
+{
+    return add_response("Connection: %s\r\n",(m_linger==true)?"keep-alive":"close");
+}
+
+bool http_conn::add_blank_line()
+{
+    return add_response("%s","\r\n");
+}
+
+bool http_conn::add_content(const char * content)
+{
+    return add_response("%s",content);
+}
+
+//根据服务器处理HTTP请求的结果,决定返回给客户端的内容
+bool http_conn::process_write(HTTP_CODE ret)
+{
+    switch (ret)
+    {
+        case INTERNAL_ERROR:
+        {
+            add_status_line(500,error_500_title);
+            add_headers(strlen(error_500_form));
+            if(!add_content(error_500_form))
+            {
+                return false;
+            }
+            break;
+        }   
+        case BAD_REQUEST:
+        {
+            add_status_line(400,error_400_title);
+            add_headers(strlen(error_400_form));
+            if(!add_content(error_400_form))
+            {
+                return false;
+            }
+            break;
+        }
+        case NO_RESOURCE:
+        {
+            add_status_line(404,error_404_title);
+            add_headers(strlen(error_404_form));
+            if(!add_content(error_404_form))
+            {
+                return false;
+            }
+            break;
+        }
+        case FORBIDDEN_REQUEST:
+        {
+            add_status_line(403,error_403_title);
+            add_headers(strlen(error_403_form));
+            if(!add_content(error_403_form))
+            {
+                return false;
+            }
+            break;
+        }
+        case FILE_REQUEST:
+        {
+            add_status_line(200,ok_200_title);
+            if(m_file_stat.st_size!=0)
+            {
+                add_headers(m_file_stat.st_size);
+                m_iv[0].iov_base=m_write_buf;
+                m_iv[0].iov_len=m_write_idx;
+                m_iv[1].iov_base=m_file_address;
+                m_iv[1].iov_len=m_file_stat.st_size;
+                m_iv_count=2;
+                return true;
+            }
+            else
+            {
+                const char * ok_string="<html><body></body></html>";
+                add_headers(strlen(ok_string));
+                if(!add_content(ok_string))
+                {
+                    return false;
+                } 
+            }
+        }
+        default:
+            return false;
+    }
+
+    m_iv[0].iov_base=m_write_buf;
+    m_iv[0].iov_len=m_write_idx;
+    m_iv_count=1;
+    return true;
+}
+
+//由线程池中的工作线程调用,是处理HTTP请求的入口函数
+void http_conn::process()
+{
+    HTTP_CODE read_ret=process_read();
+    if(read_ret==NO_REQUEST)
+    {
+        modfd(m_epollfd,m_sockfd,EPOLLIN);
+        return;
+    }
+
+    bool write_ret=process_write(read_ret);
+    if(!write_ret)
+    {
+        close_conn();
+    }
+
+    modfd(m_epollfd,m_sockfd,EPOLLOUT);
+}

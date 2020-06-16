@@ -42,8 +42,17 @@ class locker
 private:
     pthread_mutex_t m_mutex;
 public:
-    locker();
-    ~locker();
+    locker()
+    {
+        if(pthread_mutex_init(&m_mutex,NULL)!=0)
+        {
+            throw std::exception();
+        }
+    }
+    ~locker()
+    {
+        pthread_mutex_destroy(&m_mutex);
+    }
 
     //獲得互斥鎖
     bool lock()
@@ -56,19 +65,6 @@ public:
         return pthread_mutex_unlock(&m_mutex)==0;
     }
 };
-
-locker::locker()
-{
-    if(pthread_mutex_init(&m_mutex,NULL)!=0)
-    {
-        throw std::exception();
-    }
-}
-
-locker::~locker()
-{
-    pthread_mutex_destroy(&m_mutex);
-}
 
 //封装条件变量的类
 class cond

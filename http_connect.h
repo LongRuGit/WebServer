@@ -50,8 +50,8 @@ public:
     enum LINE_STATUS {LINE_OK=0,LINE_BAD,LINE_OPEN};
 
 public:
-    http_conn();
-    ~http_conn();
+    http_conn() {}
+    ~http_conn() {}
 public:
     //初始化新接受的连接
     void init(int sockfd,const sockaddr_in &addr);
@@ -82,7 +82,7 @@ private:
     //下面这一组函数被prrocess_write调用以填充HTTP应答
     void unmap();
     bool add_response(const char * format,...);
-    bool add_content(const char *& content);
+    bool add_content(const char * content);
     bool add_status_line(int status,const char * title);
     bool add_headers(int content_length);
     bool add_content_length(int content_length);
